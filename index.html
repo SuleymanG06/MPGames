@@ -117,6 +117,21 @@
     </div>
   </div>
 
-  <script type="module" src="js/main.js"></script>
+  <script type="module" src="main.js"></script>
+  <script>
+    // Teşhis: main.js yüklenemezse (dosya eksikse) uyar.
+    setTimeout(function () {
+      if (!window.__eloyunlariHazir) {
+        var d = document.createElement("div");
+        d.style.cssText =
+          "position:fixed;bottom:0;left:0;right:0;background:#ff5a6e;color:#fff;" +
+          "padding:12px 16px;font:14px/1.5 sans-serif;z-index:999;text-align:center";
+        d.textContent =
+          "Oyun dosyaları yüklenemedi: 'main.js' bulunamadı. Depoda tüm .js " +
+          "dosyalarının (main, hand, store dahil 7 adet) olduğundan emin ol. Ayrıntı: F12 → Console.";
+        document.body.appendChild(d);
+      }
+    }, 3000);
+  </script>
 </body>
 </html>

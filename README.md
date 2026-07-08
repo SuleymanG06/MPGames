@@ -38,18 +38,18 @@ Alternatifler: Netlify / Vercel / Cloudflare Pages'e klasörü sürükle-bırak.
 ```
 index.html      Menü + oyun ekranı
 style.css       Görsel kimlik
-js/main.js      Uygulama akışı, kamera, oyun döngüsü
-js/hand.js      MediaPipe sarmalayıcı (ayna düzeltmesi, jest, çimdik)
-js/rps.js       Taş Kağıt Makas
-js/dots.js      Parmak Avı (iki mod)
-js/puzzle.js    El Puzzle
-js/sound.js     Web Audio ses efektleri
-js/store.js     Rekor deposu (localStorage)
+main.js         Uygulama akışı, kamera, oyun döngüsü
+hand.js         MediaPipe sarmalayıcı (ayna düzeltmesi, jest, çimdik)
+rps.js          Taş Kağıt Makas
+dots.js         Parmak Avı (iki mod)
+puzzle.js       El Puzzle
+sound.js        Web Audio ses efektleri
+store.js        Rekor deposu (localStorage)
 ```
 
 ## Online skor tablosu (ileriki adım)
 
-Tüm rekor okuma/yazma işlemleri `js/store.js` içinde toplandı. Kullanıcıların
+Tüm rekor okuma/yazma işlemleri `store.js` içinde toplandı. Kullanıcıların
 birbirinin rekorlarını görmesi için:
 
 1. Ücretsiz bir **Supabase** projesi aç, `skorlar (isim, oyun, mod, skor, tarih)`
