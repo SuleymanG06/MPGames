@@ -1,0 +1,297 @@
+/* ============ El Oyunları · gece arcade paleti ============ */
+:root {
+  --bg: #12101f;          /* derin gece moru */
+  --bg-raise: #1a1730;    /* panel */
+  --line: #2c2749;
+  --ink: #f2efe6;         /* kırık beyaz */
+  --ink-dim: #a49fc0;
+  --amber: #ffb03a;       /* el / enerji */
+  --cyan: #45e0d8;        /* izleme çizgileri */
+  --red: #ff5a6e;
+  --green: #5be38a;
+  --radius: 18px;
+  --font-display: "Bricolage Grotesque", system-ui, sans-serif;
+  --font-body: "IBM Plex Sans", system-ui, sans-serif;
+  --font-mono: "IBM Plex Mono", monospace;
+}
+
+* { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; }
+body {
+  background:
+    radial-gradient(1200px 600px at 85% -10%, rgba(255,176,58,.08), transparent 60%),
+    radial-gradient(900px 500px at -10% 110%, rgba(69,224,216,.07), transparent 60%),
+    var(--bg);
+  color: var(--ink);
+  font-family: var(--font-body);
+  min-height: 100vh;
+}
+
+.hidden { display: none !important; }
+
+/* ==================== MENÜ ==================== */
+#screen-menu {
+  max-width: 1060px;
+  margin: 0 auto;
+  padding: clamp(20px, 4vw, 48px);
+}
+
+.hero {
+  display: grid;
+  grid-template-columns: 1.2fr .8fr;
+  gap: 32px;
+  align-items: center;
+  padding: clamp(8px, 2vw, 24px) 0 40px;
+}
+
+.eyebrow {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+  color: var(--amber);
+  margin: 0 0 12px;
+}
+
+.hero h1 {
+  font-family: var(--font-display);
+  font-size: clamp(56px, 9vw, 104px);
+  font-weight: 800;
+  line-height: .92;
+  margin: 0 0 20px;
+  letter-spacing: -.02em;
+}
+
+.lede {
+  font-size: 17px;
+  line-height: 1.6;
+  color: var(--ink-dim);
+  max-width: 46ch;
+  margin: 0 0 22px;
+}
+
+.hero-hint {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 13.5px;
+  color: var(--ink-dim);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 8px 16px;
+  background: var(--bg-raise);
+}
+.hero-hint .dot {
+  width: 8px; height: 8px; border-radius: 50%;
+  background: var(--green);
+  box-shadow: 0 0 10px var(--green);
+  animation: pulse 2.2s ease-in-out infinite;
+}
+@keyframes pulse { 50% { opacity: .35; } }
+
+.hero-hand { display: flex; justify-content: center; }
+.hero-hand svg { width: min(100%, 300px); height: auto; }
+
+/* ==================== KARTLAR ==================== */
+.cards {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 18px;
+}
+
+.card {
+  background: var(--bg-raise);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 24px 22px 20px;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  transition: transform .18s ease, border-color .18s ease, box-shadow .18s ease;
+}
+.card:hover, .card:focus-visible {
+  transform: translateY(-4px);
+  border-color: var(--amber);
+  box-shadow: 0 14px 34px -18px rgba(255,176,58,.45);
+  outline: none;
+}
+.card-icon { font-size: 30px; margin-bottom: 14px; }
+.card h2 {
+  font-family: var(--font-display);
+  font-size: 24px;
+  font-weight: 700;
+  margin: 0 0 10px;
+}
+.card p {
+  font-size: 14.5px;
+  line-height: 1.55;
+  color: var(--ink-dim);
+  margin: 0 0 18px;
+  flex: 1;
+}
+.card-foot {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+}
+.tag {
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+  letter-spacing: .06em;
+  color: var(--cyan);
+  border: 1px solid rgba(69,224,216,.35);
+  border-radius: 999px;
+  padding: 3px 10px;
+}
+.record {
+  font-family: var(--font-mono);
+  font-size: 12.5px;
+  color: var(--amber);
+}
+.record[data-record="none"] { color: var(--ink-dim); }
+
+.site-foot {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin-top: 44px;
+  padding-top: 18px;
+  border-top: 1px solid var(--line);
+  font-size: 12.5px;
+  color: var(--ink-dim);
+}
+.linkish {
+  background: none;
+  border: none;
+  color: var(--ink-dim);
+  font: inherit;
+  text-decoration: underline;
+  cursor: pointer;
+}
+.linkish:hover { color: var(--red); }
+
+/* ==================== OYUN EKRANI ==================== */
+#screen-game {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  background: #000;
+}
+
+.game-topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 14px;
+  background: var(--bg);
+  border-bottom: 1px solid var(--line);
+}
+.game-topbar button {
+  background: var(--bg-raise);
+  color: var(--ink);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 8px 14px;
+  font: 500 14px var(--font-body);
+  cursor: pointer;
+}
+.game-topbar button:hover { border-color: var(--amber); }
+.game-title {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 17px;
+  letter-spacing: .01em;
+}
+
+.stage {
+  position: relative;
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+#cam { display: none; }
+#game-canvas {
+  max-width: 100%;
+  max-height: 100%;
+  border-radius: 6px;
+}
+
+/* ==================== OVERLAY / PANEL ==================== */
+.overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(10, 9, 20, .78);
+  backdrop-filter: blur(4px);
+  z-index: 10;
+}
+.panel {
+  background: var(--bg-raise);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 26px;
+  width: min(440px, 92vw);
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.panel h3 {
+  font-family: var(--font-display);
+  font-size: 24px;
+  margin: 0;
+}
+.panel p { margin: 0; color: var(--ink-dim); line-height: 1.5; }
+
+.mode-btn {
+  text-align: left;
+  background: var(--bg);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 16px;
+  color: var(--ink);
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  transition: border-color .15s ease, transform .15s ease;
+}
+.mode-btn:hover { border-color: var(--amber); transform: translateY(-2px); }
+.mode-btn strong { font-family: var(--font-display); font-size: 18px; }
+.mode-btn span { font-size: 13.5px; color: var(--ink-dim); line-height: 1.45; }
+.mode-btn em {
+  font-style: normal;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--amber);
+}
+
+.loading-panel { align-items: center; text-align: center; }
+.spinner {
+  width: 38px; height: 38px;
+  border-radius: 50%;
+  border: 3px solid var(--line);
+  border-top-color: var(--amber);
+  animation: spin .9s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ==================== DUYARLILIK / ERİŞİLEBİLİRLİK ==================== */
+@media (max-width: 860px) {
+  .hero { grid-template-columns: 1fr; }
+  .hero-hand { order: -1; }
+  .hero-hand svg { width: 180px; }
+  .cards { grid-template-columns: 1fr; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation: none !important; transition: none !important; }
+}

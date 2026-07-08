@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>El Oyunları · Kameranla Oyna</title>
+  <meta name="description" content="Kamera ve el hareketleriyle oynanan üç oyun: Taş Kağıt Makas, Parmak Avı ve El Puzzle.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400..800&family=IBM+Plex+Mono:wght@500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <!-- ==================== MENÜ EKRANI ==================== -->
+  <main id="screen-menu" class="screen">
+    <header class="hero">
+      <div class="hero-text">
+        <p class="eyebrow">Kamera açık · eller hazır</p>
+        <h1>El<br>Oyunları</h1>
+        <p class="lede">Klavye yok, fare yok. Üç oyun da yalnızca kameran ve el
+        hareketlerinle oynanıyor. Rekorların bu tarayıcıda saklanır — geç, kendini geç.</p>
+        <div class="hero-hint">
+          <span class="dot"></span>
+          Oyunlar kamera izni ister; görüntün cihazından dışarı çıkmaz.
+        </div>
+      </div>
+      <div class="hero-hand" aria-hidden="true">
+        <svg id="hand-wire" viewBox="0 0 300 340" fill="none">
+          <!-- iskelet main.js tarafından çizilip canlandırılır -->
+        </svg>
+      </div>
+    </header>
+
+    <section class="cards" aria-label="Oyunlar">
+      <article class="card" data-game="rps" tabindex="0">
+        <div class="card-icon">✊✋✌️</div>
+        <h2>Taş Kağıt Makas</h2>
+        <p>Geri sayım biter, elin ne gösteriyorsa o oynanır. Bilgisayara karşı 5 puana ilk ulaşan kazanır.</p>
+        <div class="card-foot">
+          <span class="tag">1 el</span>
+          <span class="record" data-record="none">Rekor tutulmaz</span>
+        </div>
+      </article>
+
+      <article class="card" data-game="dots" tabindex="0">
+        <div class="card-icon">🎯</div>
+        <h2>Parmak Avı</h2>
+        <p>Düşen topları işaret parmağınla patlat. Yeşil puan, kırmızı bela, sarı bonus yağmuru. İki mod: Süreli ve Sonsuz.</p>
+        <div class="card-foot">
+          <span class="tag">2 el</span>
+          <span class="record" id="record-dots">Rekor: —</span>
+        </div>
+      </article>
+
+      <article class="card" data-game="puzzle" tabindex="0">
+        <div class="card-icon">🧩</div>
+        <h2>El Puzzle</h2>
+        <p>İki elinle bir çerçeve kur, o an gördüğün görüntü 3×3 karışır. Parçaları çimdikleyerek yerine taşı.</p>
+        <div class="card-foot">
+          <span class="tag">2 el · çimdik</span>
+          <span class="record" id="record-puzzle">Rekor: —</span>
+        </div>
+      </article>
+    </section>
+
+    <footer class="site-foot">
+      <span>Python + OpenCV prototiplerinden web'e taşındı · MediaPipe Hand Landmarker</span>
+      <button id="btn-reset-records" class="linkish" type="button">Rekorları sıfırla</button>
+    </footer>
+  </main>
+
+  <!-- ==================== OYUN EKRANI ==================== -->
+  <div id="screen-game" class="screen hidden">
+    <div class="game-topbar">
+      <button id="btn-back" type="button" title="Menüye dön (Esc)">← Menü</button>
+      <span id="game-title" class="game-title"></span>
+      <button id="btn-mute" type="button" title="Sesi aç/kapat">🔊</button>
+    </div>
+    <div class="stage">
+      <video id="cam" playsinline muted></video>
+      <canvas id="game-canvas"></canvas>
+
+      <!-- Parmak Avı mod seçimi -->
+      <div id="mode-select" class="overlay hidden">
+        <div class="panel">
+          <h3>Mod seç</h3>
+          <button class="mode-btn" data-mode="sureli" type="button">
+            <strong>⏱ Süreli</strong>
+            <span>60 saniye. Kırmızı top süre ve puan yakar, mor top süre ekler.</span>
+            <em id="mode-rec-sureli"></em>
+          </button>
+          <button class="mode-btn" data-mode="sonsuz" type="button">
+            <strong>♾ Sonsuz</strong>
+            <span>Süre yok, 5 can var. Toplar giderek hızlanır; kırmızı top 1 can götürür, kalp can verir.</span>
+            <em id="mode-rec-sonsuz"></em>
+          </button>
+        </div>
+      </div>
+
+      <!-- Yükleme katmanı -->
+      <div id="loading" class="overlay hidden">
+        <div class="panel loading-panel">
+          <div class="spinner"></div>
+          <p id="loading-text">Kamera ve el modeli hazırlanıyor…</p>
+        </div>
+      </div>
+
+      <!-- Hata katmanı -->
+      <div id="error-box" class="overlay hidden">
+        <div class="panel">
+          <h3>Bir sorun çıktı</h3>
+          <p id="error-text"></p>
+          <button id="btn-error-back" type="button" class="mode-btn"><strong>Menüye dön</strong></button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script type="module" src="js/main.js"></script>
+</body>
+</html>
