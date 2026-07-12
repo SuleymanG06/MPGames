@@ -82,12 +82,16 @@ HTTPS'li ve alan adı bağlamayı destekler.
 
 ## Online özellikler: Supabase kurulumu (5 dakika)
 
-Skor tablosu ve TKM online modu için ücretsiz bir Supabase projesi gerekir:
+Skor tablosu, benzersiz kullanıcı adları ve TKM online modu için ücretsiz
+bir Supabase projesi gerekir:
 
 1. **supabase.com** → ücretsiz hesap aç → "New project" (bölge: Europe/Frankfurt uygun).
-2. Sol menüden **SQL Editor** → aşağıdaki kodu yapıştır → **Run**:
+2. Sol menüden **SQL Editor** → aşağıdaki kodun TAMAMINI yapıştır → **Run**:
 
 ```sql
+create extension if not exists pgcrypto;
+
+-- Skorlar
 create table public.skorlar (
   id bigint generated always as identity primary key,
   isim text not null check (char_length(isim) between 2 and 16),
@@ -95,11 +99,73 @@ create table public.skorlar (
   skor numeric not null check (skor >= 0 and skor < 100000),
   created_at timestamptz default now()
 );
-
 alter table public.skorlar enable row level security;
 create policy "herkes okur" on public.skorlar for select using (true);
-create policy "herkes ekler" on public.skorlar for insert with check (true);
+-- Not: INSERT politikası bilerek YOK; skor yalnızca skor_ekle fonksiyonuyla girer.
 
+-- Kullanıcı adları (benzersiz, sahiplik anahtarına kilitli)
+create table public.kullanicilar (
+  isim text primary key check (char_length(isim) between 2 and 16),
+  sahip_hash text not null,
+  created_at timestamptz default now()
+);
+alter table public.kullanicilar enable row level security;
+-- Doğrudan erişim yok; her şey fonksiyonlarla.
+
+-- İsim sahiplenme: boşsa alır, sahibiyse onaylar, doluysa reddeder
+create or replace function public.isim_al(p_isim text, p_token text)
+returns text
+language plpgsql security definer set search_path = public
+as $$
+declare v_hash text;
+begin
+  if p_token is null or char_length(p_token) < 8 then return 'gecersiz'; end if;
+  if char_length(trim(p_isim)) < 2 or char_length(trim(p_isim)) > 16 then
+    return 'gecersiz';
+  end if;
+
+  select sahip_hash into v_hash
+  from kullanicilar where lower(isim) = lower(trim(p_isim));
+
+  if v_hash is null then
+    insert into kullanicilar (isim, sahip_hash)
+    values (trim(p_isim), encode(digest(p_token, 'sha256'), 'hex'));
+    return 'alindi';
+  elsif v_hash = encode(digest(p_token, 'sha256'), 'hex') then
+    return 'zaten_senin';
+  else
+    return 'dolu';
+  end if;
+end $$;
+
+-- Skor ekleme: yalnızca ismin gerçek sahibinden kabul edilir
+create or replace function public.skor_ekle(
+  p_isim text, p_token text, p_oyun text, p_skor numeric
+)
+returns boolean
+language plpgsql security definer set search_path = public
+as $$
+declare v_hash text;
+begin
+  select sahip_hash into v_hash
+  from kullanicilar where lower(isim) = lower(trim(p_isim));
+
+  if v_hash is null or v_hash <> encode(digest(p_token, 'sha256'), 'hex') then
+    return false;
+  end if;
+  if p_oyun not in ('parmak_sureli','parmak_sonsuz','puzzle','tkm_online') then
+    return false;
+  end if;
+  if p_skor < 0 or p_skor >= 100000 then return false; end if;
+
+  insert into skorlar (isim, oyun, skor) values (trim(p_isim), p_oyun, p_skor);
+  return true;
+end $$;
+
+grant execute on function public.isim_al(text, text) to anon;
+grant execute on function public.skor_ekle(text, text, text, numeric) to anon;
+
+-- İlk 10 görünümü
 create view public.liderler as
 select oyun, isim,
   case
@@ -113,15 +179,23 @@ group by oyun, isim;
 grant select on public.liderler to anon;
 ```
 
-3. **Project Settings → API** sayfasından `Project URL` ve `anon public` anahtarını
-   kopyala, `config.js` içindeki iki alana yapıştır.
-4. `config.js`'i depoya yükle. Bitti — skor tablosu dolmaya, TKM online
-   eşleşmeler çalışmaya başlar.
+3. **Project Settings → API** sayfasından `Project URL` ve `anon public`
+   anahtarını kopyala, `config.js` içindeki iki alana yapıştır ve yükle.
 
-Notlar:
-- `anon` anahtarının sitede görünmesi normaldir; yalnızca izin verdiğin
-  işlemleri (skor ekleme/okuma) yapabilir.
-- TKM online eşleşme Supabase **Realtime** kanallarını kullanır; yeni
-  projelerde varsayılan olarak açıktır, ek ayar gerekmez.
-- Skorlar kullanıcı beyanına dayanır; ciddi bir yarışma için ileride
-  sunucu doğrulaması eklenebilir.
+### Nasıl çalışıyor?
+
+- Kullanıcı adını ilk kaydeden kişinin tarayıcısına gizli bir "sahiplik
+  anahtarı" yazılır; isim veritabanında bu anahtarın SHA-256 özetine
+  kilitlenir. Aynı ismi (büyük/küçük harf farkı dahil) başkası alamaz.
+- Skorlar da yalnızca doğru anahtarla gönderilebilir; kimse başkasının
+  adına skor yazamaz.
+- Anahtar tarayıcıda durur: kullanıcı tarayıcı verilerini silerse ismine
+  yeniden erişemez (yeni isim alması gerekir). Basitliğin bedeli bu;
+  ileride e-postayla giriş eklenerek aşılabilir.
+- `anon` anahtarının sitede görünmesi normaldir; yalnızca izin verilen
+  fonksiyonları çağırabilir.
+
+> Daha önce README'nin eski sürümündeki SQL'i çalıştırdıysan: SQL Editor'de
+> önce `drop policy if exists "herkes ekler" on public.skorlar;` çalıştır,
+> sonra yukarıdaki koddan yalnızca `pgcrypto`, `kullanicilar` tablosu ve iki
+> fonksiyonu (grant satırlarıyla) çalıştırman yeterli.

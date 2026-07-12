@@ -5,7 +5,7 @@ import { initHandLandmarker, detectHands, HAND_CONNECTIONS } from "./hand.js";
 import { sfx, setMuted, isMuted } from "./sound.js";
 import { store } from "./store.js";
 import {
-  onlineEnabled, getUserName, setUserName,
+  onlineEnabled, getUserName, claimUserName,
   submitScore, fetchTop10, RpsNet,
 } from "./online.js";
 import { RPSGame } from "./rps.js";
@@ -241,13 +241,26 @@ function refreshNameUI() {
   }
 }
 
-function saveName() {
-  if (setUserName(nameInput.value)) {
+async function saveName() {
+  const btn = $("btn-save-name");
+  btn.disabled = true;
+  userHint.classList.remove("ok");
+  userHint.textContent = "kontrol ediliyor…";
+
+  const res = await claimUserName(nameInput.value);
+  btn.disabled = false;
+
+  if (res.ok) {
     refreshNameUI();
+    if (res.reason === "alindi") userHint.textContent = `"${getUserName()}" artık senin! 🎉`;
     sfx.pop();
-  } else {
+    loadLeaderboard(currentLb);
+  } else if (res.reason === "dolu") {
+    userHint.textContent = "bu isim başkası tarafından alınmış, farklı bir isim dene";
+  } else if (res.reason === "gecersiz") {
     userHint.textContent = "en az 2, en çok 16 karakter olmalı";
-    userHint.classList.remove("ok");
+  } else {
+    userHint.textContent = "bağlantı sorunu — az sonra tekrar dene";
   }
 }
 

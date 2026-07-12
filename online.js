@@ -23,19 +23,59 @@ async function getClient() {
   return client;
 }
 
-// ==================== KULLANICI ADI ====================
+// ==================== KULLANICI ADI (SAHİPLİKLİ) ====================
+// İsim ilk kez kaydedilirken bu tarayıcıya özel gizli bir anahtar üretilir
+// ve isim Supabase'te o anahtara kilitlenir. Aynı ismi başka biri alamaz;
+// skorlar da yalnızca ismin sahibinden kabul edilir.
 
 const NAME_KEY = "eloyun_kullanici_adi";
+const TOKEN_KEY = "eloyun_sahip_anahtari";
+
+function getToken() {
+  let t = localStorage.getItem(TOKEN_KEY);
+  if (!t) {
+    t =
+      (crypto.randomUUID && crypto.randomUUID()) ||
+      Math.random().toString(36).slice(2) + Date.now();
+    localStorage.setItem(TOKEN_KEY, t);
+  }
+  return t;
+}
 
 export function getUserName() {
   return localStorage.getItem(NAME_KEY) || "";
 }
 
-export function setUserName(name) {
+/**
+ * İsmi sahiplenmeyi dener.
+ * Dönüş: { ok, reason } — reason: alindi | zaten_senin | dolu | gecersiz | yerel | hata
+ */
+export async function claimUserName(name) {
   const temiz = String(name).trim().slice(0, 16);
-  if (temiz.length < 2) return false;
-  localStorage.setItem(NAME_KEY, temiz);
-  return true;
+  if (temiz.length < 2) return { ok: false, reason: "gecersiz" };
+
+  // Online kapalıysa yalnızca yerel kaydet (skor tablosu zaten yok)
+  if (!onlineEnabled()) {
+    localStorage.setItem(NAME_KEY, temiz);
+    return { ok: true, reason: "yerel" };
+  }
+
+  try {
+    const sb = await getClient();
+    const { data, error } = await sb.rpc("isim_al", {
+      p_isim: temiz,
+      p_token: getToken(),
+    });
+    if (error) throw error;
+    if (data === "alindi" || data === "zaten_senin") {
+      localStorage.setItem(NAME_KEY, temiz);
+      return { ok: true, reason: data };
+    }
+    return { ok: false, reason: data }; // dolu | gecersiz
+  } catch (err) {
+    console.warn("İsim kaydı başarısız:", err.message || err);
+    return { ok: false, reason: "hata" };
+  }
 }
 
 // ==================== SKOR TABLOSU ====================
@@ -46,9 +86,14 @@ export async function submitScore(oyun, skor) {
   if (!onlineEnabled() || !isim) return false;
   try {
     const sb = await getClient();
-    const { error } = await sb.from("skorlar").insert({ isim, oyun, skor });
+    const { data, error } = await sb.rpc("skor_ekle", {
+      p_isim: isim,
+      p_token: getToken(),
+      p_oyun: oyun,
+      p_skor: skor,
+    });
     if (error) throw error;
-    return true;
+    return data === true;
   } catch (err) {
     console.warn("Skor gönderilemedi:", err.message || err);
     return false;
