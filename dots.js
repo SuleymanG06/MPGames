@@ -70,15 +70,21 @@ export class DotsGame {
       if (bonusMode) {
         type = "yellow_bonus";
       } else {
-        // Sonsuz modda kırmızı oranı zamanla %20 → %34'e tırmanır
+        // Olasılıklar (kümülatif ve açık):
+        // Sonsuz: kırmızı zamanla %20 → %34, sarı %3, kalp %2, kalan yeşil
+        // Süreli: kırmızı %20, sarı %3, süre bonusu %3, kalan yeşil
         const redP =
           this.mode === "sonsuz"
             ? Math.min(0.34, 0.2 + this.elapsed * 0.001)
             : 0.2;
+        const yellowP = 0.03;
+        const specialP = this.mode === "sonsuz" ? 0.02 : 0.03; // kalp / süre bonusu
+        const greenP = 1 - redP - yellowP - specialP;
+
         const r = Math.random();
-        if (r < 0.74 - (redP - 0.2)) type = "green";
-        else if (r < 0.74 + redP - 0.2) type = "red";
-        else if (r < 0.77 + redP - 0.2) type = "yellow_trigger";
+        if (r < greenP) type = "green";
+        else if (r < greenP + redP) type = "red";
+        else if (r < greenP + redP + yellowP) type = "yellow_trigger";
         else {
           if (this.mode === "sureli") {
             type = "time_bonus";
