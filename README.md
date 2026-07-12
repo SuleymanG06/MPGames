@@ -66,3 +66,16 @@ Backend olmadan da site tamamen çalışır.
   bilgisayar her zaman rastgele oynar.
 - Model ve WASM dosyaları CDN'den yüklenir; ilk açılışta birkaç saniye sürebilir.
 - Görüntü hiçbir sunucuya gönderilmez, tüm işlem cihazda yapılır.
+
+## Kendi alan adını bağlama (GitHub'sız görünüm)
+
+GitHub Pages zaten gerçek bir web sitesi barındırır; adresin `github.io`
+olmasını istemiyorsan:
+
+1. Bir alan adı satın al (isimtescil, Namecheap vb. — yılda ~200-400 TL).
+2. Depo → Settings → Pages → **Custom domain** kısmına alan adını yaz.
+3. Alan adı panelinde DNS'e `CNAME` kaydı ekle: `www → suleymang06.github.io`.
+4. "Enforce HTTPS" kutusunu işaretle (kamera için şart).
+
+Alternatif: klasörü Netlify ya da Vercel'e sürükle-bırak; ikisi de ücretsiz,
+HTTPS'li ve alan adı bağlamayı destekler.

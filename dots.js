@@ -223,7 +223,7 @@ export class DotsGame {
 
         if (dot.type === "time_bonus") {
           ctx.fillStyle = "#fff";
-          ctx.font = `600 ${13 * scale}px 'IBM Plex Mono', monospace`;
+          ctx.font = `600 ${13 * scale}px 'Nunito', sans-serif`;
           ctx.textAlign = "center";
           ctx.textBaseline = "middle";
           ctx.fillText(`+${dot.extra}`, x, y + 1);
@@ -337,7 +337,7 @@ export class DotsGame {
       if (p.text) {
         ctx.globalAlpha = Math.min(1, p.life * 2);
         ctx.fillStyle = p.color;
-        ctx.font = `700 ${17 * scale}px 'IBM Plex Sans', sans-serif`;
+        ctx.font = `700 ${17 * scale}px 'Nunito', sans-serif`;
         ctx.textAlign = "center";
         ctx.textBaseline = "middle";
         ctx.fillText(p.text, p.x, p.y);
@@ -386,12 +386,12 @@ export class DotsGame {
     const midY = barH / 2;
 
     ctx.textAlign = "left";
-    ctx.font = `600 ${20 * scale}px 'IBM Plex Sans', sans-serif`;
+    ctx.font = `600 ${20 * scale}px 'Nunito', sans-serif`;
     ctx.fillStyle = "#ffb03a";
     ctx.fillText(`SKOR ${this.score}`, 20, midY);
 
     // Rekor
-    ctx.font = `500 ${13 * scale}px 'IBM Plex Mono', monospace`;
+    ctx.font = `500 ${13 * scale}px 'Nunito', sans-serif`;
     ctx.fillStyle = "#a49fc0";
     const recText = this.record !== null ? `REKOR ${this.record}` : "REKOR —";
     ctx.fillText(recText, 20 + ctx.measureText("SKOR 0000").width + 30 * scale, midY);
@@ -399,7 +399,7 @@ export class DotsGame {
     // Orta: süre veya canlar
     ctx.textAlign = "center";
     if (this.mode === "sureli") {
-      ctx.font = `600 ${20 * scale}px 'IBM Plex Sans', sans-serif`;
+      ctx.font = `600 ${20 * scale}px 'Nunito', sans-serif`;
       ctx.fillStyle = this.remaining < 10 ? "#ff5a6e" : "#f2efe6";
       ctx.fillText(`SÜRE ${Math.max(0, Math.ceil(this.remaining))}`, w / 2, midY);
     } else {
@@ -420,11 +420,11 @@ export class DotsGame {
     // Sağ: bonus veya hız göstergesi
     ctx.textAlign = "right";
     if (bonusMode) {
-      ctx.font = `600 ${18 * scale}px 'IBM Plex Sans', sans-serif`;
+      ctx.font = `600 ${18 * scale}px 'Nunito', sans-serif`;
       ctx.fillStyle = "#ffe14d";
       ctx.fillText(`BONUS ${bonusLeft.toFixed(1)}`, w - 20, midY);
     } else if (this.mode === "sonsuz") {
-      ctx.font = `500 ${14 * scale}px 'IBM Plex Mono', monospace`;
+      ctx.font = `500 ${14 * scale}px 'Nunito', sans-serif`;
       ctx.fillStyle = "#45e0d8";
       const mult = Math.min(3, 1 + this.elapsed * 0.0125);
       ctx.fillText(`HIZ x${mult.toFixed(2)}`, w - 20, midY);
@@ -438,15 +438,15 @@ export class DotsGame {
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
 
-    ctx.font = `800 ${52 * scale}px 'Bricolage Grotesque', sans-serif`;
+    ctx.font = `800 ${52 * scale}px 'Caveat', cursive`;
     ctx.fillStyle = "#ff5a6e";
     ctx.fillText("OYUN BİTTİ", w / 2, h / 2 - 70 * scale);
 
-    ctx.font = `600 ${30 * scale}px 'IBM Plex Sans', sans-serif`;
+    ctx.font = `600 ${30 * scale}px 'Nunito', sans-serif`;
     ctx.fillStyle = "#f2efe6";
     ctx.fillText(`Skor: ${this.score}`, w / 2, h / 2 - 14 * scale);
 
-    ctx.font = `600 ${20 * scale}px 'IBM Plex Sans', sans-serif`;
+    ctx.font = `600 ${20 * scale}px 'Nunito', sans-serif`;
     if (this.newRecord) {
       ctx.fillStyle = "#ffe14d";
       ctx.fillText("🏆 YENİ REKOR!", w / 2, h / 2 + 30 * scale);
@@ -456,7 +456,7 @@ export class DotsGame {
       ctx.fillText(rec !== null ? `Rekor: ${rec}` : "", w / 2, h / 2 + 30 * scale);
     }
 
-    ctx.font = `500 ${16 * scale}px 'IBM Plex Sans', sans-serif`;
+    ctx.font = `500 ${16 * scale}px 'Nunito', sans-serif`;
     ctx.fillStyle = "#d8d4ec";
     ctx.fillText("Tekrar oynamak için R'ye bas veya ekrana dokun", w / 2, h / 2 + 72 * scale);
   }

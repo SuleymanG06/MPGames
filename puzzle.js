@@ -304,7 +304,7 @@ export class PuzzleGame {
     ctx.fillStyle = "rgba(18,16,31,.8)";
     ctx.fillRect(0, 0, w, 46 * scale);
 
-    ctx.font = `500 ${15 * scale}px 'IBM Plex Sans', sans-serif`;
+    ctx.font = `500 ${15 * scale}px 'Nunito', sans-serif`;
     ctx.fillStyle = "#f2efe6";
 
     let info = "";
@@ -318,7 +318,7 @@ export class PuzzleGame {
     ctx.fillText(info, 16, 23 * scale);
 
     ctx.textAlign = "right";
-    ctx.font = `500 ${13 * scale}px 'IBM Plex Mono', monospace`;
+    ctx.font = `500 ${13 * scale}px 'Nunito', sans-serif`;
     ctx.fillStyle = "#ffb03a";
     ctx.fillText(
       this.record !== null ? `REKOR ${Number(this.record).toFixed(1)} sn` : "REKOR —",
@@ -327,15 +327,15 @@ export class PuzzleGame {
 
     if (this.mode === "SOLVED") {
       ctx.textAlign = "center";
-      ctx.font = `800 ${44 * scale}px 'Bricolage Grotesque', sans-serif`;
+      ctx.font = `800 ${44 * scale}px 'Caveat', cursive`;
       ctx.fillStyle = "#5be38a";
       ctx.fillText("PUZZLE TAMAMLANDI!", w / 2, h - 90 * scale);
       if (this.newRecord) {
-        ctx.font = `600 ${22 * scale}px 'IBM Plex Sans', sans-serif`;
+        ctx.font = `600 ${22 * scale}px 'Nunito', sans-serif`;
         ctx.fillStyle = "#ffe14d";
         ctx.fillText("🏆 YENİ REKOR!", w / 2, h - 52 * scale);
       }
-      ctx.font = `500 ${15 * scale}px 'IBM Plex Sans', sans-serif`;
+      ctx.font = `500 ${15 * scale}px 'Nunito', sans-serif`;
       ctx.fillStyle = "#d8d4ec";
       ctx.fillText("Yeniden oynamak için R'ye bas veya ekrana dokun", w / 2, h - 22 * scale);
     }

@@ -1,5 +1,5 @@
 // Uygulama akışı: menü ↔ oyun ekranı, kamera + model kurulumu,
-// ortak oyun döngüsü ve rekor gösterimi.
+// ortak oyun döngüsü, rekor gösterimi ve menüdeki CANLI el iskeleti.
 
 import { initHandLandmarker, detectHands, HAND_CONNECTIONS } from "./hand.js";
 import { sfx, setMuted, isMuted } from "./sound.js";
@@ -37,13 +37,13 @@ function refreshRecords() {
   const parts = [];
   if (s !== null) parts.push(`⏱ ${s}`);
   if (e !== null) parts.push(`♾ ${e}`);
-  $("record-dots").textContent = parts.length ? `Rekor: ${parts.join(" · ")}` : "Rekor: —";
+  $("record-dots").textContent = parts.length ? `rekor: ${parts.join(" · ")}` : "rekor: —";
 
   const p = store.getPuzzleRecord();
-  $("record-puzzle").textContent = p !== null ? `En iyi: ${fmtSec(p)}` : "Rekor: —";
+  $("record-puzzle").textContent = p !== null ? `en iyi: ${fmtSec(p)}` : "rekor: —";
 
-  $("mode-rec-sureli").textContent = s !== null ? `Rekorun: ${s} puan` : "Henüz rekor yok";
-  $("mode-rec-sonsuz").textContent = e !== null ? `Rekorun: ${e} puan` : "Henüz rekor yok";
+  $("mode-rec-sureli").textContent = s !== null ? `rekorun: ${s} puan` : "henüz rekor yok";
+  $("mode-rec-sonsuz").textContent = e !== null ? `rekorun: ${e} puan` : "henüz rekor yok";
 }
 
 $("btn-reset-records").addEventListener("click", () => {
@@ -53,7 +53,7 @@ $("btn-reset-records").addEventListener("click", () => {
   }
 });
 
-// ==================== KAMERA + MODEL ====================
+// ==================== KAMERA + MODEL (OYUN) ====================
 
 async function setupCamera() {
   loadingText.textContent = "Kamera açılıyor…";
@@ -118,6 +118,8 @@ function env() {
 }
 
 async function startGame(name) {
+  stopMenuHand(); // menüdeki canlı el kamerayı bırakmalı
+
   screenMenu.classList.add("hidden");
   screenGame.classList.remove("hidden");
   errorBox.classList.add("hidden");
@@ -206,75 +208,175 @@ canvas.addEventListener("pointerdown", (e) => {
   game.onClick?.(x, y);
 });
 
-// Sekme gizlenince kamerayı kapatma; sadece zaman sıçramasını önle
 document.addEventListener("visibilitychange", () => {
   if (!document.hidden) lastTs = performance.now();
 });
 
-// ==================== HERO EL ANİMASYONU ====================
-// Menüdeki imza öğe: canlı el-landmark iskeleti.
+// ==================== HERO: CANLI EL İSKELETİ ====================
+// Menüdeki 21 noktalı el, "Elini kameraya göster" denince
+// gerçek elinin hareketini birebir taklit eder; el yokken
+// kendi kendine hafifçe kıpırdar.
+
+const VIEW_W = 300;
+const VIEW_H = 340;
+
+// Boşta duruş (açık el)
+const IDLE_POSE = [
+  [150, 320],
+  [105, 295], [72, 265], [48, 235], [30, 205],        // baş parmak
+  [112, 190], [105, 150], [100, 118], [96, 88],       // işaret
+  [148, 182], [148, 135], [148, 100], [148, 66],      // orta
+  [182, 188], [188, 145], [192, 112], [196, 80],      // yüzük
+  [214, 205], [228, 172], [238, 146], [246, 120],     // serçe
+];
+const FINGERTIPS = new Set([4, 8, 12, 16, 20]);
+const FINGERS = [
+  [1, 2, 3, 4], [5, 6, 7, 8], [9, 10, 11, 12], [13, 14, 15, 16], [17, 18, 19, 20],
+];
+
+let heroLines = [];
+let heroDots = [];
+let livePts = null;   // kameradan gelen hedef noktalar
+let liveAt = 0;       // son canlı veri zamanı
+let rendered = IDLE_POSE.map((p) => [...p]); // ekranda o an çizilen (yumuşatılmış)
+
+let menuStream = null;
+let menuTracking = false;
+const heroBtn = $("btn-hero-cam");
 
 function buildHeroHand() {
   const svg = $("hand-wire");
   if (!svg) return;
-
-  const base = [
-    [150, 320],
-    [105, 295], [72, 265], [48, 235], [30, 205],        // baş parmak
-    [112, 190], [105, 150], [100, 118], [96, 88],       // işaret
-    [148, 182], [148, 135], [148, 100], [148, 66],      // orta
-    [182, 188], [188, 145], [192, 112], [196, 80],      // yüzük
-    [214, 205], [228, 172], [238, 146], [246, 120],     // serçe
-  ];
-
   const NS = "http://www.w3.org/2000/svg";
-  const lines = [];
-  const dots = [];
 
   for (const [a, b] of HAND_CONNECTIONS) {
     const ln = document.createElementNS(NS, "line");
-    ln.setAttribute("stroke", "rgba(69,224,216,0.65)");
-    ln.setAttribute("stroke-width", "1.5");
+    ln.setAttribute("stroke", "rgba(42,37,34,0.8)");
+    ln.setAttribute("stroke-width", "2");
+    ln.setAttribute("stroke-linecap", "round");
     svg.appendChild(ln);
-    lines.push([ln, a, b]);
+    heroLines.push([ln, a, b]);
   }
-  base.forEach((_, i) => {
+  IDLE_POSE.forEach((_, i) => {
     const c = document.createElementNS(NS, "circle");
-    c.setAttribute("r", i % 4 === 0 && i > 0 ? "5" : "3.5");
-    c.setAttribute("fill", i % 4 === 0 && i > 0 ? "#ffb03a" : "#f2efe6");
+    const tip = FINGERTIPS.has(i);
+    c.setAttribute("r", tip ? "5.5" : i === 0 ? "6" : "3.5");
+    c.setAttribute("fill", tip ? "#d9482b" : i === 0 ? "#1f8a70" : "#2a2522");
     svg.appendChild(c);
-    dots.push(c);
+    heroDots.push(c);
   });
 
-  const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-  const fingers = [
-    [1, 2, 3, 4], [5, 6, 7, 8], [9, 10, 11, 12], [13, 14, 15, 16], [17, 18, 19, 20],
-  ];
+  requestAnimationFrame(heroFrame);
+}
 
-  function frame(t) {
-    const pts = base.map((p) => [...p]);
+function heroFrame(t) {
+  // Hedef: canlı el (taze ise) yoksa boşta animasyon
+  let target;
+  if (livePts && performance.now() - liveAt < 400) {
+    target = livePts;
+  } else {
+    target = IDLE_POSE.map((p) => [...p]);
+    const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     if (!reduce) {
-      fingers.forEach((chain, fi) => {
+      FINGERS.forEach((chain, fi) => {
         const sway = Math.sin(t / 900 + fi * 1.1) * 4;
         chain.forEach((idx, k) => {
           const f = (k + 1) / chain.length;
-          pts[idx][0] += sway * f;
-          pts[idx][1] += Math.sin(t / 700 + fi) * 2 * f;
+          target[idx][0] += sway * f;
+          target[idx][1] += Math.sin(t / 700 + fi) * 2 * f;
         });
       });
     }
-    for (const [ln, a, b] of lines) {
-      ln.setAttribute("x1", pts[a][0]); ln.setAttribute("y1", pts[a][1]);
-      ln.setAttribute("x2", pts[b][0]); ln.setAttribute("y2", pts[b][1]);
-    }
-    dots.forEach((c, i) => {
-      c.setAttribute("cx", pts[i][0]);
-      c.setAttribute("cy", pts[i][1]);
-    });
-    if (!reduce) requestAnimationFrame(frame);
   }
-  requestAnimationFrame(frame);
+
+  // Yumuşat: canlı veriye hızlı, boşta duruşa yavaş dön
+  const k = livePts && performance.now() - liveAt < 400 ? 0.5 : 0.12;
+  for (let i = 0; i < rendered.length; i++) {
+    rendered[i][0] += (target[i][0] - rendered[i][0]) * k;
+    rendered[i][1] += (target[i][1] - rendered[i][1]) * k;
+  }
+
+  for (const [ln, a, b] of heroLines) {
+    ln.setAttribute("x1", rendered[a][0]); ln.setAttribute("y1", rendered[a][1]);
+    ln.setAttribute("x2", rendered[b][0]); ln.setAttribute("y2", rendered[b][1]);
+  }
+  heroDots.forEach((c, i) => {
+    c.setAttribute("cx", rendered[i][0]);
+    c.setAttribute("cy", rendered[i][1]);
+  });
+
+  requestAnimationFrame(heroFrame);
 }
+
+/** Kameradan gelen eli viewBox'a sığdırıp hedef nokta yapar. */
+function feedLiveHand(hand) {
+  const pts = hand.points;
+  let xMin = Infinity, xMax = -Infinity, yMin = Infinity, yMax = -Infinity;
+  for (const p of pts) {
+    if (p.x < xMin) xMin = p.x;
+    if (p.x > xMax) xMax = p.x;
+    if (p.y < yMin) yMin = p.y;
+    if (p.y > yMax) yMax = p.y;
+  }
+  const bw = Math.max(1, xMax - xMin);
+  const bh = Math.max(1, yMax - yMin);
+  const s = Math.min((VIEW_W - 50) / bw, (VIEW_H - 50) / bh);
+  const ox = (VIEW_W - bw * s) / 2 - xMin * s;
+  const oy = (VIEW_H - bh * s) / 2 - yMin * s;
+
+  livePts = pts.map((p) => [p.x * s + ox, p.y * s + oy]);
+  liveAt = performance.now();
+}
+
+async function startMenuHand() {
+  if (menuTracking) { stopMenuHand(); return; }
+  try {
+    heroBtn.disabled = true;
+    heroBtn.textContent = "hazırlanıyor…";
+    await initHandLandmarker(() => {});
+    menuStream = await navigator.mediaDevices.getUserMedia({
+      video: { width: { ideal: 640 }, height: { ideal: 480 }, facingMode: "user" },
+      audio: false,
+    });
+    video.srcObject = menuStream;
+    await video.play();
+    menuTracking = true;
+    heroBtn.disabled = false;
+    heroBtn.textContent = "✋ elini salla! (kapatmak için tıkla)";
+    menuLoop();
+  } catch (err) {
+    console.error(err);
+    heroBtn.disabled = false;
+    heroBtn.textContent =
+      err.name === "NotAllowedError" ? "kamera izni verilmedi 😕" : "kamera açılamadı 😕";
+    setTimeout(() => {
+      if (!menuTracking) heroBtn.textContent = "✋ Elini kameraya göster";
+    }, 3000);
+  }
+}
+
+function stopMenuHand() {
+  menuTracking = false;
+  if (menuStream) {
+    menuStream.getTracks().forEach((t) => t.stop());
+    menuStream = null;
+    video.srcObject = null;
+  }
+  livePts = null;
+  heroBtn.disabled = false;
+  heroBtn.textContent = "✋ Elini kameraya göster";
+}
+
+function menuLoop() {
+  if (!menuTracking) return;
+  const vw = video.videoWidth || 640;
+  const vh = video.videoHeight || 480;
+  const hands = detectHands(video, vw, vh);
+  if (hands.length > 0) feedLiveHand(hands[0]);
+  requestAnimationFrame(menuLoop);
+}
+
+heroBtn.addEventListener("click", startMenuHand);
 
 // ==================== BAŞLANGIÇ ====================
 

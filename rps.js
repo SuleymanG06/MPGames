@@ -98,7 +98,7 @@ export class RPSGame {
         ctx.save();
         ctx.translate(w / 2, h / 2);
         ctx.scale(scale, scale);
-        ctx.font = "800 130px 'Bricolage Grotesque', sans-serif";
+        ctx.font = "800 130px 'Caveat', cursive";
         ctx.textAlign = "center";
         ctx.textBaseline = "middle";
         ctx.fillStyle = "rgba(0,0,0,.35)";
@@ -175,7 +175,7 @@ export class RPSGame {
     ctx.beginPath(); ctx.moveTo(0, 58); ctx.lineTo(w, 58); ctx.stroke();
 
     ctx.textBaseline = "middle";
-    ctx.font = "600 22px 'IBM Plex Sans', sans-serif";
+    ctx.font = "600 22px 'Nunito', sans-serif";
     ctx.textAlign = "left";
     ctx.fillStyle = "#ffb03a";
     ctx.fillText(`Sen: ${this.playerScore}`, 20, 30);
@@ -185,7 +185,7 @@ export class RPSGame {
 
     // Seri geçmişi (ortada küçük noktalar)
     ctx.textAlign = "center";
-    ctx.font = "600 15px 'IBM Plex Mono', monospace";
+    ctx.font = "600 15px 'Nunito', sans-serif";
     if (this.history.length) {
       let x = w / 2 - (this.history.length - 1) * 9;
       for (const r of this.history) {
@@ -205,12 +205,12 @@ export class RPSGame {
 
     ctx.textAlign = "left";
     ctx.textBaseline = "middle";
-    ctx.font = "600 18px 'IBM Plex Sans', sans-serif";
+    ctx.font = "600 18px 'Nunito', sans-serif";
     ctx.fillStyle = "#5be38a";
     ctx.fillText(`Anlık hareket: ${currentGesture} ${EMOJI[currentGesture] || ""}`, 20, h - 58);
 
     ctx.fillStyle = "#f2efe6";
-    ctx.font = "500 17px 'IBM Plex Sans', sans-serif";
+    ctx.font = "500 17px 'Nunito', sans-serif";
     ctx.fillText(this.resultText, 20, h - 26);
 
     let help = "";
@@ -220,7 +220,7 @@ export class RPSGame {
     if (help) {
       ctx.textAlign = "right";
       ctx.fillStyle = "#ffb03a";
-      ctx.font = "600 16px 'IBM Plex Sans', sans-serif";
+      ctx.font = "600 16px 'Nunito', sans-serif";
       ctx.fillText(help, w - 20, h - 26);
     }
   }
@@ -229,7 +229,7 @@ export class RPSGame {
     const text = `Sen ${EMOJI[this.playerChoice]}  ${this.playerChoice}   —   ${this.computerChoice}  ${EMOJI[this.computerChoice]} PC`;
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
-    ctx.font = "700 26px 'Bricolage Grotesque', sans-serif";
+    ctx.font = "700 26px 'Caveat', cursive";
     const tw = ctx.measureText(text).width;
     ctx.fillStyle = "rgba(18,16,31,.75)";
     const bx = w / 2 - tw / 2 - 18;
@@ -249,10 +249,10 @@ export class RPSGame {
     ctx.fillRect(0, 58, w, h - 58 - 88);
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
-    ctx.font = "800 54px 'Bricolage Grotesque', sans-serif";
+    ctx.font = "800 54px 'Caveat', cursive";
     ctx.fillStyle = this.playerScore >= WIN_SCORE ? "#5be38a" : "#ff5a6e";
     ctx.fillText(this.playerScore >= WIN_SCORE ? "KAZANDIN!" : "KAYBETTİN", w / 2, h / 2 - 20);
-    ctx.font = "500 20px 'IBM Plex Sans', sans-serif";
+    ctx.font = "500 20px 'Nunito', sans-serif";
     ctx.fillStyle = "#f2efe6";
     ctx.fillText(`${this.playerScore} — ${this.computerScore}`, w / 2, h / 2 + 28);
   }
