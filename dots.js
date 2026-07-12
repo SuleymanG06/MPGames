@@ -70,10 +70,15 @@ export class DotsGame {
       if (bonusMode) {
         type = "yellow_bonus";
       } else {
+        // Sonsuz modda kırmızı oranı zamanla %20 → %34'e tırmanır
+        const redP =
+          this.mode === "sonsuz"
+            ? Math.min(0.34, 0.2 + this.elapsed * 0.001)
+            : 0.2;
         const r = Math.random();
-        if (r < 0.74) type = "green";
-        else if (r < 0.94) type = "red";
-        else if (r < 0.97) type = "yellow_trigger";
+        if (r < 0.74 - (redP - 0.2)) type = "green";
+        else if (r < 0.74 + redP - 0.2) type = "red";
+        else if (r < 0.77 + redP - 0.2) type = "yellow_trigger";
         else {
           if (this.mode === "sureli") {
             type = "time_bonus";
@@ -105,18 +110,23 @@ export class DotsGame {
     this.particles.push({ x, y, vx: 0, vy: -55, life: 0.8, r: 0, color, text });
   }
 
+  speedMult() {
+    if (this.mode === "sureli") return 1;
+    // Sonsuz: her saniye %3 hızlanır → 1 dk'da ~2.8x, ~4 dk'da 8x tavan
+    return Math.min(8, 1 + this.elapsed * 0.03);
+  }
+
   dotSpeed(h) {
     // sn başına piksel
     const base = h * 0.34;
-    if (this.mode === "sureli") return base;
-    // Sonsuz: her 20 saniyede yaklaşık %25 hızlanır, en fazla 3 kat
-    return base * Math.min(3, 1 + this.elapsed * 0.0125);
+    return base * this.speedMult();
   }
 
   spawnRate() {
     const base = 2.1; // sn başına top
     if (this.mode === "sureli") return base;
-    return Math.min(4.5, base * (1 + this.elapsed * 0.008));
+    // Sonsuz: top yağmuru da hızla birlikte yoğunlaşır (tavan 8/sn)
+    return Math.min(8, base * (1 + this.elapsed * 0.02));
   }
 
   // ---------- ana döngü ----------
@@ -426,7 +436,7 @@ export class DotsGame {
     } else if (this.mode === "sonsuz") {
       ctx.font = `500 ${14 * scale}px 'Nunito', sans-serif`;
       ctx.fillStyle = "#45e0d8";
-      const mult = Math.min(3, 1 + this.elapsed * 0.0125);
+      const mult = this.speedMult();
       ctx.fillText(`HIZ x${mult.toFixed(2)}`, w - 20, midY);
     }
   }
