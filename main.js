@@ -4,6 +4,10 @@
 import { initHandLandmarker, detectHands, HAND_CONNECTIONS } from "./hand.js";
 import { sfx, setMuted, isMuted } from "./sound.js";
 import { store } from "./store.js";
+import {
+  onlineEnabled, getUserName, setUserName,
+  submitScore, fetchTop10, RpsNet,
+} from "./online.js";
 import { RPSGame } from "./rps.js";
 import { DotsGame } from "./dots.js";
 import { PuzzleGame } from "./puzzle.js";
@@ -114,6 +118,10 @@ function env() {
     canvas, ctx, video, sfx,
     requestModeSelect: showModeSelect,
     onRecordsChanged: refreshRecords,
+    submitScore: async (oyun, skor) => {
+      const ok = await submitScore(oyun, skor);
+      if (ok) loadLeaderboard(currentLb);
+    },
   };
 }
 
@@ -147,6 +155,7 @@ async function startGame(name) {
   game.enter();
 
   if (game.needsModeSelect) showModeSelect();
+  if (game.needsRpsSelect) showRpsSelect();
 
   lastTs = performance.now();
   rafId = requestAnimationFrame(loop);
@@ -164,9 +173,12 @@ function backToMenu() {
   game?.exit();
   game = null;
   stopCamera();
+  modeSelect.classList.add("hidden");
+  $("rps-select").classList.add("hidden");
   screenGame.classList.add("hidden");
   screenMenu.classList.remove("hidden");
   refreshRecords();
+  loadLeaderboard(currentLb);
 }
 
 // ==================== OLAYLAR ====================
@@ -211,6 +223,166 @@ canvas.addEventListener("pointerdown", (e) => {
 document.addEventListener("visibilitychange", () => {
   if (!document.hidden) lastTs = performance.now();
 });
+
+// ==================== KULLANICI ADI ====================
+
+const nameInput = $("username");
+const userHint = $("user-hint");
+
+function refreshNameUI() {
+  const name = getUserName();
+  nameInput.value = name;
+  if (name) {
+    userHint.textContent = `hoş geldin, ${name}! skorların bu adla listelenecek`;
+    userHint.classList.add("ok");
+  } else {
+    userHint.textContent = "skor tablosuna girmek ve online oynamak için gerekli";
+    userHint.classList.remove("ok");
+  }
+}
+
+function saveName() {
+  if (setUserName(nameInput.value)) {
+    refreshNameUI();
+    sfx.pop();
+  } else {
+    userHint.textContent = "en az 2, en çok 16 karakter olmalı";
+    userHint.classList.remove("ok");
+  }
+}
+
+$("btn-save-name").addEventListener("click", saveName);
+nameInput.addEventListener("keydown", (e) => { if (e.key === "Enter") saveName(); });
+
+// ==================== İLK 10 SKOR TABLOSU ====================
+
+const LB_META = {
+  parmak_sureli: { title: "Parmak Avı · Süreli (puan)", fmt: (v) => String(Math.round(v)) },
+  parmak_sonsuz: { title: "Parmak Avı · Sonsuz (puan)", fmt: (v) => String(Math.round(v)) },
+  puzzle: { title: "El Puzzle · en iyi süre", fmt: (v) => Number(v).toFixed(1) + " sn" },
+  tkm_online: { title: "TKM Online · galibiyet", fmt: (v) => String(Math.round(v)) },
+};
+let currentLb = "parmak_sureli";
+
+async function loadLeaderboard(oyun) {
+  currentLb = oyun;
+  document.querySelectorAll(".lb-tab").forEach((t) =>
+    t.classList.toggle("active", t.dataset.lb === oyun)
+  );
+  $("lb-title").textContent = LB_META[oyun].title;
+  const list = $("lb-list");
+  const note = $("lb-note");
+
+  if (!onlineEnabled()) {
+    list.innerHTML = "";
+    note.textContent =
+      "Online skor tablosu henüz kurulmadı (config.js boş). Kurulum adımları README'de.";
+    return;
+  }
+
+  list.innerHTML = "<li><span class='lb-name'>yükleniyor…</span></li>";
+  note.textContent = "";
+  const rows = await fetchTop10(oyun);
+
+  if (rows === null) {
+    list.innerHTML = "";
+    note.textContent = "Skor tablosuna ulaşılamadı. Bağlantını kontrol et.";
+    return;
+  }
+  if (rows.length === 0) {
+    list.innerHTML = "";
+    note.textContent = "Henüz skor yok — ilk sen ol! 🏁";
+    return;
+  }
+
+  const me = getUserName();
+  list.innerHTML = "";
+  rows.forEach((r, i) => {
+    const li = document.createElement("li");
+    if (me && r.isim === me) li.classList.add("lb-me");
+    li.innerHTML =
+      `<span class="lb-rank">${i + 1}.</span>` +
+      `<span class="lb-name"></span>` +
+      `<span class="lb-score">${LB_META[oyun].fmt(r.skor)}</span>`;
+    li.querySelector(".lb-name").textContent = r.isim;
+    list.appendChild(li);
+  });
+}
+
+document.querySelectorAll(".lb-tab").forEach((tab) =>
+  tab.addEventListener("click", () => loadLeaderboard(tab.dataset.lb))
+);
+
+// ==================== TKM MOD PANELİ ====================
+
+const rpsSelect = $("rps-select");
+const rpsStatus = $("rps-status");
+
+function showRpsSelect() {
+  rpsStatus.textContent = onlineEnabled()
+    ? ""
+    : "Not: online modlar için site sahibinin Supabase kurulumu yapması gerekir (README).";
+  rpsSelect.classList.remove("hidden");
+}
+
+function requireName() {
+  const name = getUserName();
+  if (!name) {
+    rpsStatus.textContent =
+      "Online oynamak için önce menüden kullanıcı adı kaydetmelisin.";
+    return null;
+  }
+  return name;
+}
+
+async function startRpsOnline(kind) {
+  if (!onlineEnabled()) {
+    rpsStatus.textContent = "Online modlar kapalı: config.js doldurulmamış (README'ye bak).";
+    return;
+  }
+  const name = requireName();
+  if (!name) return;
+
+  const net = new RpsNet();
+  try {
+    if (kind === "quick") {
+      rpsStatus.textContent = "Rakip aranıyor…";
+      await net.quickMatch(name, (s) => (rpsStatus.textContent = s));
+      // eşleşme sync ile odaya taşınır; oyunu hemen devreye al
+      rpsSelect.classList.add("hidden");
+      game?.startOnline(net, name);
+    } else if (kind === "create") {
+      rpsStatus.textContent = "Oda kuruluyor…";
+      const code = await net.createRoom(name);
+      rpsStatus.textContent = `Oda kodun: ${code} — arkadaşın girince oyun başlar`;
+      rpsSelect.classList.add("hidden");
+      game?.startOnline(net, name);
+      game.statusText = `Oda kodu: ${code} — rakip bekleniyor…`;
+    } else if (kind === "join") {
+      const code = $("rps-code").value.trim();
+      if (code.length !== 4) {
+        rpsStatus.textContent = "4 haneli oda kodunu gir.";
+        return;
+      }
+      rpsStatus.textContent = "Odaya giriliyor…";
+      await net.joinRoom(code, name);
+      rpsSelect.classList.add("hidden");
+      game?.startOnline(net, name);
+    }
+  } catch (err) {
+    console.error(err);
+    net.leave();
+    rpsStatus.textContent = "Bağlanılamadı: " + (err.message || err);
+  }
+}
+
+$("rps-cpu").addEventListener("click", () => {
+  rpsSelect.classList.add("hidden");
+  game?.startOffline();
+});
+$("rps-quick").addEventListener("click", () => startRpsOnline("quick"));
+$("rps-create").addEventListener("click", () => startRpsOnline("create"));
+$("rps-join").addEventListener("click", () => startRpsOnline("join"));
 
 // ==================== HERO: CANLI EL İSKELETİ ====================
 // Menüdeki 21 noktalı el, "Elini kameraya göster" denince
@@ -382,4 +554,6 @@ heroBtn.addEventListener("click", startMenuHand);
 
 window.__eloyunlariHazir = true;
 refreshRecords();
+refreshNameUI();
+loadLeaderboard(currentLb);
 buildHeroHand();

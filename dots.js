@@ -341,6 +341,9 @@ export class DotsGame {
     if (this.newRecord) this.env.sfx.record();
     else this.env.sfx.lose();
     this.env.onRecordsChanged?.();
+    if (this.score > 0) {
+      this.env.submitScore?.("parmak_" + this.mode, this.score);
+    }
   }
 
   updateParticles(ctx, dt, scale) {

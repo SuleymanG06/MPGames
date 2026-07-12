@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>El Oyunları · kameranla oyna</title>
-  <meta name="description" content="Kamera ve el hareketleriyle oynanan üç küçük oyun: Taş Kağıt Makas, Parmak Avı ve El Puzzle.">
+  <meta name="description" content="Kamera ve el hareketleriyle oynanan üç oyun: Taş Kağıt Makas (online rakip desteğiyle), Parmak Avı ve El Puzzle.">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Caveat:wght@500;600;700&family=Nunito:ital,wght@0,400;0,600;0,800;1,400&display=swap" rel="stylesheet">
@@ -14,76 +14,105 @@
 
   <!-- ==================== MENÜ EKRANI ==================== -->
   <main id="screen-menu" class="screen">
-    <header class="hero">
-      <div class="hero-text">
-        <p class="eyebrow">klavye yok · fare yok · sadece ellerin</p>
-        <h1>El Oyunları
-          <svg class="squiggle" viewBox="0 0 260 18" aria-hidden="true">
-            <path d="M4 12 C 40 4, 70 16, 105 9 S 175 4, 210 11 S 245 8, 256 10"
-                  fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round"/>
-          </svg>
-        </h1>
-        <p class="lede">Bu sitedeki üç oyun da herhangi bir klavye veya fare
-        girişi olmadan, yalnızca kamera üzerinden el hareketlerinizle oynanır.
-        Oyunlar ilk olarak Python ile geliştirilmiş, ardından herkesin
-        erişebilmesi için web'e taşınmıştır. Rekorlarınız bu tarayıcıda
-        saklanır.</p>
-        <p class="note">Oyunlar kamera izni ister; görüntünüz cihazınızdan
-        dışarı çıkmaz, tüm işlem tarayıcınızda yapılır.</p>
+    <div class="menu-wrap">
+      <div class="menu-main">
+        <header class="hero">
+          <div class="hero-text">
+            <p class="eyebrow">klavye yok · fare yok · sadece ellerin</p>
+            <h1>El Oyunları
+              <svg class="squiggle" viewBox="0 0 260 18" aria-hidden="true">
+                <path d="M4 12 C 40 4, 70 16, 105 9 S 175 4, 210 11 S 245 8, 256 10"
+                      fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round"/>
+              </svg>
+            </h1>
+            <p class="lede">Bu sitedeki üç oyun da herhangi bir klavye veya fare
+            girişi olmadan, yalnızca kamera üzerinden el hareketlerinizle oynanır.
+            Oyunlar ilk olarak Python ile geliştirilmiş, ardından herkesin
+            erişebilmesi için web'e taşınmıştır. Taş Kağıt Makas'ı gerçek bir
+            rakibe karşı online oynayabilir, rekorlarınızla ilk 10 listesine
+            girebilirsiniz.</p>
+            <p class="note">Oyunlar kamera izni ister; görüntünüz cihazınızdan
+            dışarı çıkmaz, tüm işlem tarayıcınızda yapılır.</p>
+          </div>
+
+          <div class="hero-hand">
+            <p class="hand-caption" aria-hidden="true">bu el senin elin olabilir&nbsp;↓</p>
+            <svg id="hand-wire" viewBox="0 0 300 340" fill="none" aria-hidden="true"></svg>
+            <button id="btn-hero-cam" type="button" class="sketch-btn small">✋ Elini kameraya göster</button>
+            <p class="hand-sub">canlı deneme — kayıt yok, yayın yok</p>
+          </div>
+        </header>
+
+        <section class="cards" aria-label="Oyunlar">
+          <article class="card tilt-l" data-game="rps" tabindex="0">
+            <span class="tape" aria-hidden="true"></span>
+            <div class="card-icon">✊✋✌️</div>
+            <h2>Taş Kağıt Makas</h2>
+            <p>Geri sayım biter, elin o an ne gösteriyorsa o oynanır. Bilgisayara
+            karşı ya da <strong>online gerçek bir rakibe karşı</strong> — 5 puana
+            ilk ulaşan kazanır.</p>
+            <div class="card-foot">
+              <span class="tag">1 el · online</span>
+              <span class="record" data-record="none">galibiyetler listede</span>
+            </div>
+          </article>
+
+          <article class="card tilt-r" data-game="dots" tabindex="0">
+            <span class="tape" aria-hidden="true"></span>
+            <div class="card-icon">🎯</div>
+            <h2>Parmak Avı</h2>
+            <p>Düşen topları işaret parmağınla patlat. Yeşil puan, kırmızı bela,
+            sarı bonus yağmuru. Süreli modda saatle, sonsuz modda 5 canla yarışırsın.</p>
+            <div class="card-foot">
+              <span class="tag">2 el</span>
+              <span class="record" id="record-dots">rekor: —</span>
+            </div>
+          </article>
+
+          <article class="card tilt-l2" data-game="puzzle" tabindex="0">
+            <span class="tape" aria-hidden="true"></span>
+            <div class="card-icon">🧩</div>
+            <h2>El Puzzle</h2>
+            <p>İki elinle havada bir çerçeve kur, çimdikle — o an gördüğün görüntü
+            3×3 karışır. Parçaları çimdikleyerek yerine taşı, süreye karşı.</p>
+            <div class="card-foot">
+              <span class="tag">2 el · çimdik</span>
+              <span class="record" id="record-puzzle">rekor: —</span>
+            </div>
+          </article>
+        </section>
+
+        <footer class="site-foot">
+          <span>Python + OpenCV prototiplerinden web'e · el emeği, göz nuru 🖐️</span>
+          <button id="btn-reset-records" class="linkish" type="button">yerel rekorları sıfırla</button>
+        </footer>
       </div>
 
-      <div class="hero-hand">
-        <p class="hand-caption" aria-hidden="true">bu el senin elin olabilir&nbsp;↓</p>
-        <svg id="hand-wire" viewBox="0 0 300 340" fill="none" aria-hidden="true">
-          <!-- iskelet main.js tarafından çizilip canlandırılır -->
-        </svg>
-        <button id="btn-hero-cam" type="button" class="sketch-btn small">✋ Elini kameraya göster</button>
-        <p class="hand-sub">canlı deneme — kayıt yok, yayın yok</p>
-      </div>
-    </header>
-
-    <section class="cards" aria-label="Oyunlar">
-      <article class="card tilt-l" data-game="rps" tabindex="0">
-        <span class="tape" aria-hidden="true"></span>
-        <div class="card-icon">✊✋✌️</div>
-        <h2>Taş Kağıt Makas</h2>
-        <p>Geri sayım biter, elin o an ne gösteriyorsa o oynanır. Bilgisayara
-        karşı 5 puana ilk ulaşan kazanır. Bilgisayar tamamen rastgele oynar.</p>
-        <div class="card-foot">
-          <span class="tag">1 el</span>
-          <span class="record" data-record="none">rekor tutulmaz</span>
+      <!-- ==================== KENAR: KULLANICI + İLK 10 ==================== -->
+      <aside class="leader-aside">
+        <div class="user-box">
+          <label for="username">kullanıcı adın</label>
+          <div class="user-row">
+            <input id="username" maxlength="16" placeholder="örn. kartal1903" autocomplete="off">
+            <button id="btn-save-name" class="sketch-btn small" type="button">kaydet</button>
+          </div>
+          <p class="user-hint" id="user-hint">skor tablosuna girmek ve online oynamak için gerekli</p>
         </div>
-      </article>
 
-      <article class="card tilt-r" data-game="dots" tabindex="0">
-        <span class="tape" aria-hidden="true"></span>
-        <div class="card-icon">🎯</div>
-        <h2>Parmak Avı</h2>
-        <p>Düşen topları işaret parmağınla patlat. Yeşil puan, kırmızı bela,
-        sarı bonus yağmuru. Süreli modda saatle, sonsuz modda 5 canla yarışırsın.</p>
-        <div class="card-foot">
-          <span class="tag">2 el</span>
-          <span class="record" id="record-dots">rekor: —</span>
+        <div class="leaderboard">
+          <h3>🏆 İlk 10</h3>
+          <div class="lb-tabs" role="tablist">
+            <button class="lb-tab active" data-lb="parmak_sureli" title="Parmak Avı · Süreli" type="button">⏱</button>
+            <button class="lb-tab" data-lb="parmak_sonsuz" title="Parmak Avı · Sonsuz" type="button">♾</button>
+            <button class="lb-tab" data-lb="puzzle" title="El Puzzle · en iyi süre" type="button">🧩</button>
+            <button class="lb-tab" data-lb="tkm_online" title="TKM Online · galibiyet" type="button">✊</button>
+          </div>
+          <p id="lb-title" class="lb-title"></p>
+          <ol id="lb-list" class="lb-list"></ol>
+          <p id="lb-note" class="lb-note"></p>
         </div>
-      </article>
-
-      <article class="card tilt-l2" data-game="puzzle" tabindex="0">
-        <span class="tape" aria-hidden="true"></span>
-        <div class="card-icon">🧩</div>
-        <h2>El Puzzle</h2>
-        <p>İki elinle havada bir çerçeve kur, çimdikle — o an gördüğün görüntü
-        3×3 karışır. Parçaları çimdikleyerek yerine taşı, süreye karşı.</p>
-        <div class="card-foot">
-          <span class="tag">2 el · çimdik</span>
-          <span class="record" id="record-puzzle">rekor: —</span>
-        </div>
-      </article>
-    </section>
-
-    <footer class="site-foot">
-      <span>Python + OpenCV prototiplerinden web'e · el emeği, göz nuru 🖐️</span>
-      <button id="btn-reset-records" class="linkish" type="button">rekorları sıfırla</button>
-    </footer>
+      </aside>
+    </div>
   </main>
 
   <!-- ==================== OYUN EKRANI ==================== -->
@@ -114,6 +143,30 @@
         </div>
       </div>
 
+      <!-- TKM mod seçimi -->
+      <div id="rps-select" class="overlay hidden">
+        <div class="panel">
+          <h3>Kime karşı?</h3>
+          <button class="mode-btn" id="rps-cpu" type="button">
+            <strong>🤖 Bilgisayara karşı</strong>
+            <span>Klasik mod. İnternet gerekmez, bilgisayar rastgele oynar.</span>
+          </button>
+          <button class="mode-btn" id="rps-quick" type="button">
+            <strong>🌐 Hızlı eşleşme</strong>
+            <span>O an rakip arayan biriyle otomatik eşleş.</span>
+          </button>
+          <button class="mode-btn" id="rps-create" type="button">
+            <strong>🔑 Oda kur</strong>
+            <span>4 haneli kod al, arkadaşına gönder, o katılınca başlayın.</span>
+          </button>
+          <div class="join-row">
+            <input id="rps-code" maxlength="4" inputmode="numeric" placeholder="oda kodu" autocomplete="off">
+            <button class="sketch-btn small" id="rps-join" type="button">odaya katıl</button>
+          </div>
+          <p id="rps-status" class="lb-note"></p>
+        </div>
+      </div>
+
       <!-- Yükleme katmanı -->
       <div id="loading" class="overlay hidden">
         <div class="panel loading-panel">
@@ -135,7 +188,6 @@
 
   <script type="module" src="main.js"></script>
   <script>
-    // Teşhis: main.js yüklenemezse (dosya eksikse) uyar.
     setTimeout(function () {
       if (!window.__eloyunlariHazir) {
         var d = document.createElement("div");
@@ -144,7 +196,7 @@
           "padding:12px 16px;font:14px/1.5 sans-serif;z-index:999;text-align:center";
         d.textContent =
           "Oyun dosyaları yüklenemedi: 'main.js' bulunamadı. Depoda tüm .js " +
-          "dosyalarının (main, hand, store dahil 7 adet) olduğundan emin ol. Ayrıntı: F12 → Console.";
+          "dosyalarının (main, hand, store, online, config dahil) olduğundan emin ol. Ayrıntı: F12 → Console.";
         document.body.appendChild(d);
       }
     }, 3000);

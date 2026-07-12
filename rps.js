@@ -1,6 +1,6 @@
 // Taş Kağıt Makas — 5 puana ilk ulaşan kazanır.
-// Not: Python prototipteki "oyuncu 4 puana gelince bilgisayar hile yapar"
-// davranışı kaldırıldı; bilgisayar her zaman tamamen rastgele oynar.
+// İki mod: bilgisayara karşı (çevrimdışı) ve gerçek rakibe karşı (online).
+// Online modda hamleler Supabase Realtime kanalıyla taşınır (bkz. online.js).
 
 import { detectGesture } from "./hand.js";
 
@@ -18,115 +18,212 @@ function beats(a, b) {
 
 export class RPSGame {
   constructor(env) {
-    this.env = env; // { canvas, ctx, sfx }
+    this.env = env; // { canvas, ctx, sfx, submitScore }
     this.title = "Taş Kağıt Makas";
+    this.needsRpsSelect = true;
   }
 
   enter() {
-    this.state = "waiting"; // waiting | countdown | result | finished
+    this.online = false;
+    this.net = null;
+    this.myName = "Sen";
+    this.oppName = "Bilgisayar";
+    this.state = "select"; // select | connect | waiting | countdown | reveal | result | finished | left
+    this.round = 0;
     this.countdownStart = 0;
     this.lastTickSecond = -1;
     this.playerChoice = "-";
     this.computerChoice = "-";
-    this.resultText = "Başlamak için S'ye bas veya ekrana dokun";
+    this.myMove = null;
+    this.oppMove = null;
+    this.resultText = "";
+    this.statusText = "";
     this.playerScore = 0;
     this.computerScore = 0;
-    this.history = []; // son raundlar: "S" sen, "B" bilgisayar, "=" berabere
+    this.history = [];
+    this.winSubmitted = false;
   }
 
-  exit() {}
+  exit() {
+    this.net?.leave();
+    this.net = null;
+  }
 
-  startRound() {
-    if (this.state !== "waiting" && this.state !== "result") return;
+  // ---------- mod başlatıcılar ----------
+
+  startOffline() {
+    this.online = false;
+    this.oppName = "Bilgisayar";
+    this.state = "waiting";
+    this.resultText = "Başlamak için S'ye bas veya ekrana dokun";
+  }
+
+  /** net: RpsNet — bağlantı main.js'te kurulur, oyun burada devralır. */
+  startOnline(net, myName) {
+    this.online = true;
+    this.net = net;
+    this.myName = myName || "Sen";
+    this.state = "connect";
+    this.statusText = "Rakip bekleniyor…";
+    this.resultText = "";
+
+    net.on("opponent", (opp) => {
+      this.oppName = opp.name;
+      if (this.state === "connect") {
+        this.state = "waiting";
+        this.resultText = `${opp.name} geldi! Başlamak için S'ye bas`;
+        this.env.sfx.go();
+      }
+    });
+
+    net.on("msg", (m) => this.onNetMsg(m));
+
+    net.on("opponent_left", () => {
+      if (this.state !== "finished") {
+        this.state = "left";
+        this.resultText = "Rakip oyundan ayrıldı";
+        this.env.sfx.lose();
+      }
+    });
+
+    net.on("error", (e) => {
+      this.state = "left";
+      this.resultText = "Bağlantı hatası: " + (e.message || e);
+    });
+
+    // Oda zaten doluysa (biz katılan taraf isek) opponent anında düşer
+    if (net.opponent) {
+      this.oppName = net.opponent.name;
+      this.state = "waiting";
+      this.resultText = `${this.oppName} ile eşleştin! Başlamak için S'ye bas`;
+    }
+  }
+
+  onNetMsg(m) {
+    if (m.t === "start") {
+      if (m.round > this.round) this.beginCountdown(m.round);
+    } else if (m.t === "move") {
+      if (m.round === this.round) {
+        this.oppMove = m.move;
+        this.tryResolveOnline();
+      }
+    } else if (m.t === "rematch") {
+      this.resetScores();
+      this.state = "waiting";
+      this.resultText = "Rövanş! Başlamak için S'ye bas";
+    }
+  }
+
+  resetScores() {
+    this.playerScore = 0;
+    this.computerScore = 0;
+    this.round = 0;
+    this.history = [];
+    this.playerChoice = "-";
+    this.computerChoice = "-";
+    this.winSubmitted = false;
+  }
+
+  // ---------- raund akışı ----------
+
+  beginCountdown(round) {
+    if (this.state === "countdown" && round === this.round) return;
+    this.round = round;
     this.state = "countdown";
     this.countdownStart = performance.now();
     this.lastTickSecond = -1;
     this.playerChoice = "-";
     this.computerChoice = "-";
+    this.myMove = null;
+    this.oppMove = null;
     this.resultText = "Hazır ol…";
   }
 
-  resetGame() {
-    this.enter();
+  requestRound() {
+    if (this.online) {
+      if (this.state !== "waiting" && this.state !== "result") return;
+      const next = this.round + 1;
+      this.net?.send({ t: "start", round: next });
+      this.beginCountdown(next);
+    } else {
+      if (this.state !== "waiting" && this.state !== "result") return;
+      this.beginCountdown(this.round + 1);
+    }
+  }
+
+  requestRematch() {
+    if (this.online) {
+      this.net?.send({ t: "rematch" });
+      this.resetScores();
+      this.state = "waiting";
+      this.resultText = "Rövanş! Başlamak için S'ye bas";
+    } else {
+      const on = this.online;
+      this.enter();
+      this.online = on;
+      this.startOffline();
+    }
   }
 
   onKey(key) {
-    if (key === "s") this.startRound();
-    if (key === "r") this.resetGame();
+    if (this.state === "select" || this.state === "connect") return;
+    if (key === "s") this.requestRound();
+    if (key === "r" && this.state === "finished") this.requestRematch();
   }
 
   onClick() {
-    if (this.state === "finished") this.resetGame();
-    else this.startRound();
+    if (this.state === "select" || this.state === "connect" || this.state === "left") return;
+    if (this.state === "finished") this.requestRematch();
+    else this.requestRound();
   }
 
-  update(dt, hands, w, h) {
-    const { ctx, sfx } = this.env;
+  // ---------- çözümleme ----------
 
-    // Anlık hareket
-    let currentGesture = "Bilinmiyor";
-    if (hands.length > 0) currentGesture = detectGesture(hands[0]);
+  tryResolveOnline() {
+    if (this.myMove === null || this.oppMove === null) return;
+    if (this.state !== "reveal") return;
 
-    // El noktalarını çiz
-    if (hands.length > 0) {
-      const p = hands[0].points;
-      ctx.fillStyle = "#5be38a";
-      for (const pt of p) {
-        ctx.beginPath();
-        ctx.arc(pt.x, pt.y, 3, 0, Math.PI * 2);
-        ctx.fill();
-      }
-      ctx.strokeStyle = "#ffe14d";
-      ctx.lineWidth = 2;
-      ctx.beginPath();
-      ctx.arc(p[8].x, p[8].y, 12, 0, Math.PI * 2);
-      ctx.stroke();
+    this.playerChoice = this.myMove;
+    this.computerChoice = this.oppMove;
+    const me = this.myMove;
+    const op = this.oppMove;
+    const { sfx } = this.env;
+
+    if (me === "Bilinmiyor" && op === "Bilinmiyor") {
+      this.resultText = "İki el de algılanamadı — raund sayılmadı";
+      this.state = "result";
+      sfx.bad();
+      return;
     }
-
-    // Geri sayım durumu
-    if (this.state === "countdown") {
-      const elapsed = (performance.now() - this.countdownStart) / 1000;
-      const second = Math.floor(elapsed);
-
-      if (elapsed < 3) {
-        if (second !== this.lastTickSecond) {
-          this.lastTickSecond = second;
-          sfx.tick();
-        }
-        const num = String(3 - second);
-        const scale = 1 + (1 - (elapsed % 1)) * 0.25;
-        ctx.save();
-        ctx.translate(w / 2, h / 2);
-        ctx.scale(scale, scale);
-        ctx.font = "800 130px 'Caveat', cursive";
-        ctx.textAlign = "center";
-        ctx.textBaseline = "middle";
-        ctx.fillStyle = "rgba(0,0,0,.35)";
-        ctx.fillText(num, 4, 6);
-        ctx.fillStyle = "#ffb03a";
-        ctx.fillText(num, 0, 0);
-        ctx.restore();
-      } else {
-        // An geldi: eller okunur
-        sfx.go();
-        this.playerChoice = currentGesture;
-        this.computerChoice = MOVES[Math.floor(Math.random() * MOVES.length)];
-        this.resolveRound();
-      }
+    if (me === "Bilinmiyor") {
+      this.resultText = "Elin algılanamadı — raund rakibin";
+      this.computerScore++;
+      this.history.push("B");
+      sfx.bad();
+    } else if (op === "Bilinmiyor") {
+      this.resultText = "Rakibin eli algılanamadı — raund senin!";
+      this.playerScore++;
+      this.history.push("S");
+      sfx.pop();
+    } else if (me === op) {
+      this.resultText = "Berabere";
+      this.history.push("=");
+    } else if (beats(me, op)) {
+      this.resultText = "Sen kazandın!";
+      this.playerScore++;
+      this.history.push("S");
+      sfx.pop();
+    } else {
+      this.resultText = `${this.oppName} kazandı`;
+      this.computerScore++;
+      this.history.push("B");
+      sfx.bad();
     }
-
-    this.drawTopBar(ctx, w);
-    this.drawBottomBar(ctx, w, h, currentGesture);
-
-    if (this.state === "result" || this.state === "finished") {
-      this.drawShowdown(ctx, w, h);
-    }
-    if (this.state === "finished") {
-      this.drawFinished(ctx, w, h);
-    }
+    if (this.history.length > 9) this.history.shift();
+    this.checkMatchEnd();
   }
 
-  resolveRound() {
+  resolveOffline() {
     const { sfx } = this.env;
     const p = this.playerChoice;
     const c = this.computerChoice;
@@ -137,7 +234,6 @@ export class RPSGame {
       sfx.bad();
       return;
     }
-
     if (p === c) {
       this.resultText = "Berabere";
       this.history.push("=");
@@ -153,19 +249,107 @@ export class RPSGame {
       sfx.bad();
     }
     if (this.history.length > 9) this.history.shift();
+    this.checkMatchEnd();
+  }
 
+  checkMatchEnd() {
+    const { sfx } = this.env;
     if (this.playerScore >= WIN_SCORE) {
       this.resultText = "Oyun bitti — kazandın! 🎉";
       this.state = "finished";
       sfx.win();
+      if (this.online && !this.winSubmitted) {
+        this.winSubmitted = true;
+        this.env.submitScore?.("tkm_online", 1);
+      }
     } else if (this.computerScore >= WIN_SCORE) {
-      this.resultText = "Oyun bitti — bilgisayar kazandı";
+      this.resultText = `Oyun bitti — ${this.oppName} kazandı`;
       this.state = "finished";
       sfx.lose();
     } else {
       this.state = "result";
     }
   }
+
+  // ---------- ana döngü ----------
+
+  update(dt, hands, w, h) {
+    const { ctx, sfx } = this.env;
+
+    let currentGesture = "Bilinmiyor";
+    if (hands.length > 0) currentGesture = detectGesture(hands[0]);
+
+    if (hands.length > 0) {
+      const p = hands[0].points;
+      ctx.fillStyle = "#5be38a";
+      for (const pt of p) {
+        ctx.beginPath();
+        ctx.arc(pt.x, pt.y, 3, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.strokeStyle = "#ffe14d";
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.arc(p[8].x, p[8].y, 12, 0, Math.PI * 2);
+      ctx.stroke();
+    }
+
+    if (this.state === "countdown") {
+      const elapsed = (performance.now() - this.countdownStart) / 1000;
+      const second = Math.floor(elapsed);
+
+      if (elapsed < 3) {
+        if (second !== this.lastTickSecond) {
+          this.lastTickSecond = second;
+          sfx.tick();
+        }
+        const num = String(3 - second);
+        const scale = 1 + (1 - (elapsed % 1)) * 0.25;
+        ctx.save();
+        ctx.translate(w / 2, h / 2);
+        ctx.scale(scale, scale);
+        ctx.font = "700 150px 'Caveat', cursive";
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.fillStyle = "rgba(0,0,0,.35)";
+        ctx.fillText(num, 4, 6);
+        ctx.fillStyle = "#ffb03a";
+        ctx.fillText(num, 0, 0);
+        ctx.restore();
+      } else {
+        sfx.go();
+        if (this.online) {
+          this.myMove = currentGesture;
+          this.state = "reveal";
+          this.resultText = "Rakibin hamlesi bekleniyor…";
+          this.net?.send({ t: "move", round: this.round, move: this.myMove });
+          this.tryResolveOnline();
+        } else {
+          this.playerChoice = currentGesture;
+          this.computerChoice = MOVES[Math.floor(Math.random() * MOVES.length)];
+          this.resolveOffline();
+        }
+      }
+    }
+
+    this.drawTopBar(ctx, w);
+    this.drawBottomBar(ctx, w, h, currentGesture);
+
+    if (this.state === "connect") {
+      this.drawCenterNote(ctx, w, h, this.statusText, "#ffe14d");
+    } else if (this.state === "left") {
+      this.drawCenterNote(ctx, w, h, this.resultText + " — menüye dönebilirsin", "#ff5a6e");
+    }
+
+    if (["result", "finished", "reveal"].includes(this.state)) {
+      this.drawShowdown(ctx, w, h);
+    }
+    if (this.state === "finished") {
+      this.drawFinished(ctx, w, h);
+    }
+  }
+
+  // ---------- çizimler ----------
 
   drawTopBar(ctx, w) {
     ctx.fillStyle = "rgba(18,16,31,.88)";
@@ -178,12 +362,11 @@ export class RPSGame {
     ctx.font = "600 22px 'Nunito', sans-serif";
     ctx.textAlign = "left";
     ctx.fillStyle = "#ffb03a";
-    ctx.fillText(`Sen: ${this.playerScore}`, 20, 30);
+    ctx.fillText(`${this.online ? this.myName : "Sen"}: ${this.playerScore}`, 20, 30);
     ctx.textAlign = "right";
     ctx.fillStyle = "#f2efe6";
-    ctx.fillText(`Bilgisayar: ${this.computerScore}`, w - 20, 30);
+    ctx.fillText(`${this.oppName}: ${this.computerScore}`, w - 20, 30);
 
-    // Seri geçmişi (ortada küçük noktalar)
     ctx.textAlign = "center";
     ctx.font = "600 15px 'Nunito', sans-serif";
     if (this.history.length) {
@@ -216,7 +399,8 @@ export class RPSGame {
     let help = "";
     if (this.state === "waiting") help = "Başlamak için S / dokun";
     else if (this.state === "result") help = "Yeni raund için S / dokun";
-    else if (this.state === "finished") help = "Yeniden başlamak için R / dokun";
+    else if (this.state === "finished")
+      help = this.online ? "Rövanş için R / dokun" : "Yeniden başlamak için R / dokun";
     if (help) {
       ctx.textAlign = "right";
       ctx.fillStyle = "#ffb03a";
@@ -225,11 +409,23 @@ export class RPSGame {
     }
   }
 
-  drawShowdown(ctx, w, h) {
-    const text = `Sen ${EMOJI[this.playerChoice]}  ${this.playerChoice}   —   ${this.computerChoice}  ${EMOJI[this.computerChoice]} PC`;
+  drawCenterNote(ctx, w, h, text, color) {
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
-    ctx.font = "700 26px 'Caveat', cursive";
+    ctx.font = "700 34px 'Caveat', cursive";
+    ctx.fillStyle = "rgba(18,16,31,.75)";
+    const tw = ctx.measureText(text).width;
+    ctx.fillRect(w / 2 - tw / 2 - 20, h / 2 - 34, tw + 40, 68);
+    ctx.fillStyle = color;
+    ctx.fillText(text, w / 2, h / 2);
+  }
+
+  drawShowdown(ctx, w, h) {
+    const opp = this.state === "reveal" ? "❓" : `${this.computerChoice}  ${EMOJI[this.computerChoice]}`;
+    const text = `Sen ${EMOJI[this.playerChoice]}  ${this.playerChoice}   —   ${opp} ${this.oppName}`;
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.font = "700 30px 'Caveat', cursive";
     const tw = ctx.measureText(text).width;
     ctx.fillStyle = "rgba(18,16,31,.75)";
     const bx = w / 2 - tw / 2 - 18;
@@ -249,9 +445,10 @@ export class RPSGame {
     ctx.fillRect(0, 58, w, h - 58 - 88);
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
-    ctx.font = "800 54px 'Caveat', cursive";
-    ctx.fillStyle = this.playerScore >= WIN_SCORE ? "#5be38a" : "#ff5a6e";
-    ctx.fillText(this.playerScore >= WIN_SCORE ? "KAZANDIN!" : "KAYBETTİN", w / 2, h / 2 - 20);
+    ctx.font = "700 64px 'Caveat', cursive";
+    const won = this.playerScore >= WIN_SCORE;
+    ctx.fillStyle = won ? "#5be38a" : "#ff5a6e";
+    ctx.fillText(won ? "KAZANDIN!" : "KAYBETTİN", w / 2, h / 2 - 20);
     ctx.font = "500 20px 'Nunito', sans-serif";
     ctx.fillStyle = "#f2efe6";
     ctx.fillText(`${this.playerScore} — ${this.computerScore}`, w / 2, h / 2 + 28);

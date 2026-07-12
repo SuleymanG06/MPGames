@@ -273,6 +273,7 @@ export class PuzzleGame {
             this.mode = "SOLVED";
             if (this.newRecord) sfx.record(); else sfx.win();
             this.env.onRecordsChanged?.();
+            this.env.submitScore?.("puzzle", Number(this.elapsed.toFixed(1)));
           }
         }
 
