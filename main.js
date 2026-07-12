@@ -254,6 +254,17 @@ async function saveName() {
     refreshNameUI();
     if (res.reason === "alindi") userHint.textContent = `"${getUserName()}" artık senin! 🎉`;
     sfx.pop();
+    // Yerel rekorları skor tablosuna taşı (isim artık veritabanında)
+    if (res.reason === "alindi" || res.reason === "zaten_senin") {
+      const gonderilecek = [];
+      const s = store.getDotsRecord("sureli");
+      if (s !== null && s > 0) gonderilecek.push(submitScore("parmak_sureli", s));
+      const e2 = store.getDotsRecord("sonsuz");
+      if (e2 !== null && e2 > 0) gonderilecek.push(submitScore("parmak_sonsuz", e2));
+      const p = store.getPuzzleRecord();
+      if (p !== null) gonderilecek.push(submitScore("puzzle", p));
+      await Promise.all(gonderilecek);
+    }
     loadLeaderboard(currentLb);
   } else if (res.reason === "dolu") {
     userHint.textContent = "bu isim başkası tarafından alınmış, farklı bir isim dene";

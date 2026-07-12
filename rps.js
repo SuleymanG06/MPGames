@@ -71,7 +71,9 @@ export class RPSGame {
       this.oppName = opp.name;
       if (this.state === "connect") {
         this.state = "waiting";
-        this.resultText = `${opp.name} geldi! Başlamak için S'ye bas`;
+        this.resultText = this.net?.isHost
+          ? `${opp.name} geldi! Başlamak için S'ye bas`
+          : `${opp.name} geldi! Oda sahibi başlatacak`;
         this.env.sfx.go();
       }
     });
@@ -95,7 +97,9 @@ export class RPSGame {
     if (net.opponent) {
       this.oppName = net.opponent.name;
       this.state = "waiting";
-      this.resultText = `${this.oppName} ile eşleştin! Başlamak için S'ye bas`;
+      this.resultText = this.net?.isHost
+        ? `${this.oppName} ile eşleştin! Başlamak için S'ye bas`
+        : `${this.oppName} ile eşleştin! Oda sahibi başlatacak`;
     }
   }
 
@@ -110,7 +114,7 @@ export class RPSGame {
     } else if (m.t === "rematch") {
       this.resetScores();
       this.state = "waiting";
-      this.resultText = "Rövanş! Başlamak için S'ye bas";
+      this.resultText = "Rövanş! Oda sahibi başlatacak";
     }
   }
 
@@ -140,19 +144,26 @@ export class RPSGame {
   }
 
   requestRound() {
+    if (this.state !== "waiting" && this.state !== "result") return;
     if (this.online) {
-      if (this.state !== "waiting" && this.state !== "result") return;
+      if (!this.net?.isHost) {
+        this.resultText = "Raundu oda sahibi başlatır — bekle";
+        return;
+      }
       const next = this.round + 1;
       this.net?.send({ t: "start", round: next });
       this.beginCountdown(next);
     } else {
-      if (this.state !== "waiting" && this.state !== "result") return;
       this.beginCountdown(this.round + 1);
     }
   }
 
   requestRematch() {
     if (this.online) {
+      if (!this.net?.isHost) {
+        this.resultText = "Rövanşı oda sahibi başlatır — bekle";
+        return;
+      }
       this.net?.send({ t: "rematch" });
       this.resetScores();
       this.state = "waiting";
@@ -397,10 +408,15 @@ export class RPSGame {
     ctx.fillText(this.resultText, 20, h - 26);
 
     let help = "";
-    if (this.state === "waiting") help = "Başlamak için S / dokun";
-    else if (this.state === "result") help = "Yeni raund için S / dokun";
+    const guest = this.online && this.net && !this.net.isHost;
+    if (this.state === "waiting")
+      help = guest ? "Oda sahibi başlatacak…" : "Başlamak için S / dokun";
+    else if (this.state === "result")
+      help = guest ? "Yeni raundu oda sahibi başlatır…" : "Yeni raund için S / dokun";
     else if (this.state === "finished")
-      help = this.online ? "Rövanş için R / dokun" : "Yeniden başlamak için R / dokun";
+      help = this.online
+        ? (guest ? "Rövanşı oda sahibi başlatır…" : "Rövanş için R / dokun")
+        : "Yeniden başlamak için R / dokun";
     if (help) {
       ctx.textAlign = "right";
       ctx.fillStyle = "#ffb03a";

@@ -93,7 +93,11 @@ export async function submitScore(oyun, skor) {
       p_skor: skor,
     });
     if (error) throw error;
-    return data === true;
+    if (data !== true) {
+      console.warn("Skor reddedildi — isim veritabanında kayıtlı olmayabilir, 'kaydet'e tekrar bas.");
+      return false;
+    }
+    return true;
   } catch (err) {
     console.warn("Skor gönderilemedi:", err.message || err);
     return false;
@@ -136,6 +140,7 @@ export class RpsNet {
     this.opponent = null;
     this.handlers = {};
     this.paired = false;
+    this.isHost = false; // raundları yalnızca oda sahibi başlatır
   }
 
   on(event, fn) { this.handlers[event] = fn; }
@@ -163,6 +168,7 @@ export class RpsNet {
         return;
       }
       this.paired = true;
+      this.isHost = this.myId < partner; // iki taraf da aynı sahibi hesaplar
       const roomId = "tkm-" + [this.myId, partner].sort().join("~");
       const eski = this.lobby;
       this.lobby = null;
@@ -185,19 +191,21 @@ export class RpsNet {
     );
   }
 
-  /** Oda kurar, 4 haneli kodu döner. */
+  /** Oda kurar, 4 haneli kodu döner. Kuran kişi oda sahibidir. */
   async createRoom(name) {
     const sb = await getClient();
     if (!sb) throw new Error("Online özellikler yapılandırılmamış");
+    this.isHost = true;
     const code = String(Math.floor(1000 + Math.random() * 9000));
     await this.joinRoomChannel(sb, "tkm-oda-" + code, name);
     return code;
   }
 
-  /** Koda göre odaya katılır. */
+  /** Koda göre odaya katılır (misafir). */
   async joinRoom(code, name) {
     const sb = await getClient();
     if (!sb) throw new Error("Online özellikler yapılandırılmamış");
+    this.isHost = false;
     await this.joinRoomChannel(sb, "tkm-oda-" + String(code).trim(), name);
   }
 
